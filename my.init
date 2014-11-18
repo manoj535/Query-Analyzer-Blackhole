@@ -1,0 +1,27 @@
+[server]
+basedir=/usr/local/mysql
+datadir=/usr/local/mysql/data
+#default-character-set=latin1
+#core-file
+skip-grant-tables=0
+innodb=OFF
+default-storage-engine=MyISAM
+#plugin-name=qa_blackhole
+plugin-load=qa_blackhole=ha_blackhole
+#plugin-load=example=ha_example
+#plugin-load=myplugin=myplugin
+plugin-dir=./plugin/
+server_id = 1
+log-output=FILE
+general-log=ON
+general-log-file=./gen.log
+slow-query-log=ON
+#deprecated#--log=./log.log
+#log-bin=FILE
+#log-bin-index=./log.log
+log-error=./server.error-mysql.log
+debug=d:t:i:O,mysqld_embedded.trace
+#debug=d,debug,error,warning:F:L:O,./server.log.trace
+#debug=d,trace,error:t,5:F:L:O,./server.log.trace
+#debug=d,debug, info,error,trace, enter, exit, warning:t, 20:F:L:O,./server.mysqld.trace
+#debug=d,debug, info,error,trace, enter, exit, warning, F:L:O,./server.mysqld.trace
