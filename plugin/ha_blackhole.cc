@@ -228,9 +228,9 @@ int qa_blackhole::info(uint flag)
   if (flag & HA_STATUS_CONST)
   {
 	printf("info::HA_STATUS_CONST\n");  
-    TABLE_SHARE *share= table->s;
-    share->keys_in_use.set_all();
-    table->keys_in_use_for_query.clear_all();
+    //TABLE_SHARE *share= table->s;
+    //share->keys_in_use.set_all();
+    //table->keys_in_use_for_query.clear_all();
     //table->quick_keys.set_all();
     //share->keys_in_use.intersect_extended(misam_info.key_map);
     //share->keys_for_keyread.intersect(share->keys_in_use);
