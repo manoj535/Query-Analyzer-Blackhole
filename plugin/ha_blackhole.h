@@ -79,7 +79,7 @@ public:
 #define BLACKHOLE_MAX_KEY	64		/* Max allowed keys */
 #define BLACKHOLE_MAX_KEY_SEG	16		/* Max segments for key */
 #define BLACKHOLE_MAX_KEY_LENGTH 1000
-#define BLACKHOLE_REC_RANGE 3
+#define BLACKHOLE_REC_RANGE 2
   uint max_supported_keys()          const { return BLACKHOLE_MAX_KEY; }
   uint max_supported_key_length()    const { return BLACKHOLE_MAX_KEY_LENGTH; }
   uint max_supported_key_part_length() const { return BLACKHOLE_MAX_KEY_LENGTH; }
