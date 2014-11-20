@@ -2,9 +2,6 @@
 QA_MYSQL_HOME := /usr/local/mysql/
 export QA_MYSQL_HOME
 
-QA_HOME := /home/manojp/Desktop/QueryAnalyzer/
-export QA_HOME
-
 # we use the embedded server so we may need to build it from scratch
 inc      := $(QA_MYSQL_HOME)/include 
 lib      := $(QA_MYSQL_HOME)/lib 
