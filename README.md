@@ -24,8 +24,8 @@ We need to build MySQL from source if we do not have the embedded server library
 
 ### Steps to build embedded server
 
- 1. Download mysql-${version}
- 2. Extract and run build --with-embedded-server, use CMake -DWITH_EMBEDDED_SERVER=true
+ 1. Download mysql-${version} (>= 5.6)
+ 2. Extract and run build --with-embedded-server, use CMake -DWITH_EMBEDDED_SERVER=true -DWITH_DEBUG=true
  3. We should see a new file libsql_embedded.a
  4. If there are problems in safe_mutex, comment SAFE_MUTEX definitions in CMakeLists.txt
 
@@ -33,5 +33,10 @@ Refer http://dev.mysql.com/doc/refman/5.5/en/source-configuration-options.html f
 
 ### Building queralyzer
  1. Set env variable QA_MYSQL_HOME or edit the makefile to define QA_MYSQL_HOME. It should point to the extracted and built MySQL server
- 2. Run make in the queralyzer folder
+ 2. Edit makefile in plugin folder to define QA_MYSQL_TEST to mysql source/build directory
+ 3. Run make in the queralyzer folder
 
+### Using queralyzer
+
+ 1. Use the query "set count of <table>=<rowcount>" to set the rowcount for specific table (Ex: set count of products=1000)
+ 2. Give explain command to view the execution plan
