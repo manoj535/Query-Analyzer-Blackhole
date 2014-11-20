@@ -22,6 +22,10 @@
 #include "thr_lock.h"                           /* THR_LOCK */
 #include "handler.h"                            /* handler */
 #include "table.h"                              /* TABLE_SHARE */
+#include <string>
+#include <fstream>
+#include <iostream>
+using namespace std;
 
 /*
   Shared structure for correct LOCK operation
@@ -113,6 +117,9 @@ public:
 		
   int optimize(THD* thd, HA_CHECK_OPT* check_opt);*/		
 private:
+  int mDefaultRowCount; // Default row count if not given config file
+  std::string mTableName;
+  const string kRowCountFilePath;
   virtual int write_row(uchar *buf);
   virtual int update_row(const uchar *old_data, uchar *new_data);
   virtual int delete_row(const uchar *buf);

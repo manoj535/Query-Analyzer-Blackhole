@@ -2,11 +2,6 @@
 QA_MYSQL_HOME := /usr/local/mysql/
 export QA_MYSQL_HOME
 
-#QA_JSONCPP_HOME := /home/manojp/Downloads/jsoncpp-src-0.5.0/
-#export QA_JSONCPP_HOME
-
-#HTTPD_HOME := /usr/local/
-
 QA_HOME := /home/manojp/Desktop/QueryAnalyzer/
 export QA_HOME
 

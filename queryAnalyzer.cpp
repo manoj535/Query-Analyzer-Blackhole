@@ -7,11 +7,13 @@
 #include <vector>
 #include <string>
 #include <iostream>
+#include <fstream>
 
 MYSQL *mysql;
 MYSQL_RES *results;
 MYSQL_ROW row, end_row;
 MYSQL_FIELD *field;
+#define setQuery "set count of "
 
 static char *server_options[] = \
   { "mysql_test", 
@@ -126,7 +128,8 @@ int display_results()
   }
 }
 
-int close_mysql() {
+int close_mysql() 
+{
      mysql_close(mysql);
      mysql_library_end();
      return 0;
@@ -135,13 +138,54 @@ int close_mysql() {
 int main()
 {
 	std::string lQuery;	
-	// set eq_range_index_dive_limit to 0
-    std::string lSetIndexDiveLimit = "set session eq_range_index_dive_limit=0;";
-    queralyzer((char *)lSetIndexDiveLimit.c_str());
 	printf("enter query:\n");
 	std::getline(std::cin, lQuery);
-	std::cout<<"Query:"<<std::endl;
-    std::cout<<lQuery<<std::endl;
- 	queralyzer((char *)lQuery.c_str());
+	if(lQuery.find(setQuery) == std::string::npos)
+	{
+		// set eq_range_index_dive_limit to 0
+		std::string lSetIndexDiveLimit = "set session eq_range_index_dive_limit=0;";
+		queralyzer((char *)lSetIndexDiveLimit.c_str());
+		std::cout<<lQuery<<std::endl;
+		queralyzer((char *)lQuery.c_str());
+	}
+	else
+	{
+		// if query is "set count of <table>=<count>"
+		long lCount=0;
+		std::string lTable;
+		size_t lFound;
+		lFound = lQuery.find("=");
+		lTable = lQuery.substr(13,lFound-13);
+		lQuery=lQuery.substr(lFound+1);
+		lCount = atoi(lQuery.c_str());
+		std::string lLine;
+		bool lFoundTable=false;
+		std::fstream  lRowCountFile;
+		lRowCountFile.open("/tmp/rowcount.txt", std::ios::in | std::ios::out);
+		if(!lRowCountFile.good())
+		{
+			lRowCountFile.open("/tmp/rowcount.txt", std::ios::out );
+		}
+		while(std::getline(lRowCountFile, lLine))
+		{
+			lFound=lLine.find(lTable);
+			if(lFound!=std::string::npos)
+			{
+				lRowCountFile.seekg(-(lLine.length()+1),std::ios::cur);
+				lRowCountFile<<lTable<<"="<<lCount<<std::endl;
+				lFoundTable=true;
+				break;
+			}
+		}
+		if(!lFoundTable)
+		{
+			lRowCountFile.clear();
+			//lRowCountFile.seekg(0,std::ios::beg);
+			lRowCountFile<<lTable<<"="<<lCount<<std::endl;
+		}
+		lRowCountFile.close();
+		//std::cout<<"table:"<<lTable<<","<<lCount<<std::endl;
+		
+	}
 	return 0;	    
 }

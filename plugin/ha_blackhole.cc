@@ -60,10 +60,11 @@ static void free_share(st_blackhole_share *share);
 
 qa_blackhole::qa_blackhole(handlerton *hton,
                            TABLE_SHARE *table_arg)
-  :handler(hton, table_arg)
+  :handler(hton, table_arg),kRowCountFilePath("/tmp/rowcount.txt")
 {
-	//thr_lock_init(&lock);
-	}
+	mDefaultRowCount=10000;
+	
+}
 
 
 static const char *qa_blackhole_exts[] = {
@@ -77,14 +78,21 @@ const char **qa_blackhole::bas_ext() const
 
 int qa_blackhole::open(const char *name, int mode, uint test_if_locked)
 {
-  DBUG_ENTER("qa_blackhole::open");
-	printf("qa_blackhole::open\n");
-  if (!(share= get_share(name)))
-    DBUG_RETURN(HA_ERR_OUT_OF_MEM);
+	unsigned lFound;
+	DBUG_ENTER("qa_blackhole::open");
+	
+	mTableName = name;
+	lFound = mTableName.find_last_of("/\\");
+	if(lFound != std::string::npos)
+	{
+		mTableName = mTableName.substr(lFound+1);
+	} // if
+	printf("qa_blackhole::open:%s\n",mTableName.c_str());
+	if (!(share= get_share(name)))
+		DBUG_RETURN(HA_ERR_OUT_OF_MEM);
 
-  thr_lock_data_init(&share->lock, &lock, NULL);
-  //qa_blackhole::info(HA_STATUS_CONST);
-  DBUG_RETURN(0);
+	thr_lock_data_init(&share->lock, &lock, NULL);
+	DBUG_RETURN(0);
 }
 
 int qa_blackhole::close(void)
@@ -212,51 +220,51 @@ void qa_blackhole::position(const uchar *record)
 int qa_blackhole::info(uint flag)
 {
   DBUG_ENTER("qa_blackhole::info");
-  printf("qa_blackhole::info\n");
+  printf("qa_blackhole::info:%s\n",mTableName.c_str());
   memset(&stats, 0, sizeof(stats));
+  
   if (flag & HA_STATUS_VARIABLE)
   {
-    //printf("inside the if cond in qa_blackhole::info\n");
-    stats.records=10000;
-    //stats.deleted=9999;
-    //table->keys_in_use_for_query.set_bit(2);
-    //table->used_keys.clear_all();
-    //TABLE_SHARE *share= table->s;
-    //share->keys_in_use.clear_all();
-  }
-  
-  if (flag & HA_STATUS_CONST)
-  {
-	printf("info::HA_STATUS_CONST\n");  
-    //TABLE_SHARE *share= table->s;
-    //share->keys_in_use.set_all();
-    //table->keys_in_use_for_query.clear_all();
-    //table->quick_keys.set_all();
-    //share->keys_in_use.intersect_extended(misam_info.key_map);
-    //share->keys_for_keyread.intersect(share->keys_in_use);
-  }
-  
-  /*for (int i = 0; i < table->s->keys; i++) 
-  {
-	for (int j = 0; j < table->key_info[i].actual_key_parts; j++) 
+	//mysql_mutex_lock(&blackhole_mutex);  
+	ifstream lRowCountFile(kRowCountFilePath.c_str()); 
+	string lLine;
+	size_t lFound;
+	int lRowCount = 0;
+	string lTemp;
+	if(lRowCountFile)
 	{
-		//if (table->key_info[i].flags & HA_FULLTEXT) 
-		//{
-			//printf("testing\n");
-			table->key_info[i].rec_per_key[j] = 1;
-			//continue;
-		//}
+		while(std::getline(lRowCountFile, lLine))
+		{
+			lFound = lLine.find(mTableName);
+			if(lFound != string::npos)
+			{
+				lTemp=lLine.substr(mTableName.length()+1);
+				lRowCount = atoi(lTemp.c_str());
+				break;
+			} // if
+			
+		} // while
+		if(lRowCount)
+		{
+			stats.records=lRowCount;
+			cout<<"rowcount for table:"<<mTableName<<" is :"<<lRowCount<<endl;
+		}
+		else
+		{
+			stats.records=mDefaultRowCount;
+			cout<<"setting default row count:"<<mDefaultRowCount<<" for table:"<<mTableName<<endl;
+		}
+		
+		lRowCountFile.close();
 	}
-  }*/
-  
-  /*for (uint i= 0; i < table->s->keys; i++)
-  {
-    KEY *key=table->key_info+i;
-    if (!key->rec_per_key)
-      continue;
-      key->rec_per_key[i]=1;
-  }*/
-  
+	else
+	{
+		cout<<"row count file not found. setting global rowcount:"<<mDefaultRowCount<<endl;
+		stats.records=mDefaultRowCount;
+	}
+    //stats.deleted=9999;
+    //mysql_mutex_unlock(&blackhole_mutex);
+  }
   
   if (flag & HA_STATUS_AUTO)
     stats.auto_increment_value= 1;
