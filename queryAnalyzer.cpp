@@ -9,77 +9,67 @@
 #include <iostream>
 #include <fstream>
 
-MYSQL *mysql;
-MYSQL_RES *results;
-MYSQL_ROW row, end_row;
-MYSQL_FIELD *field;
+MYSQL *gMySqlObj;
 #define setQuery "set count of table "
+#define rowCountFilePath "/tmp/rowcount.txt"
+#define tableCount 19
 
-static char *server_options[] = \
-  { "mysql_test", 
-    "--defaults-file=my.init", 
-    NULL };
-
-int num_elements = (sizeof(server_options) / sizeof(char *)) - 1;
-
-static char *server_groups[] = { "server",
-                                 NULL };
-
-
-int run_query(MYSQL *mysql, const char *query);
+bool run_query(MYSQL *mysql, const char *query);
 
 // starts the embedded mode mysql server
-int initialize_mysql();
+bool initialize_mysql();
 
 int close_mysql();
 
 int display_results();
 
-int queralyzer(char *buf) 
+bool queralyzer(char *iBuf) 
 {
-  int needsCleanup = 0;
-  needsCleanup = initialize_mysql();
-  run_query(mysql, buf);
-  display_results();
-  if (needsCleanup) 
-  {
-    close_mysql();
-  }
-  return 0;
+	if(!initialize_mysql())
+	return false;
+	if(!run_query(gMySqlObj, iBuf))
+	return false;
+	display_results();
+	close_mysql();
+	return true;
 }
 
-int initialize_mysql()
+bool initialize_mysql()
 {
-   mysql_library_init(num_elements, server_options, server_groups);
-   mysql = mysql_init(NULL);
-   if (mysql) 
-   {
-     mysql_options(mysql, MYSQL_READ_DEFAULT_GROUP, "server");
-     mysql_options(mysql, MYSQL_OPT_USE_EMBEDDED_CONNECTION, NULL);
-     if (!mysql_real_connect(mysql, NULL,NULL,NULL, "sampledb_blackhole", 0,NULL,0)) 
-     {
-       printf("mysql_real_connect failed: %s \n", mysql_error(mysql));
-       return -1;
-     }  
-     return 0;
-   } 
-   else 
-   {
-     printf("mysql was never inited succesfully\n");
-     return -1;
-   }
+	static char *lServerOptions[] = { "mysql_test", "--defaults-file=my.init", NULL };
+	int lNumOfElements = (sizeof(lServerOptions) / sizeof(char *)) - 1;
+	static char *lServerGroups[] = { "server", NULL };
+	mysql_library_init(lNumOfElements, lServerOptions, lServerGroups);
+	gMySqlObj = mysql_init(NULL);
+	if (gMySqlObj) 
+	{
+		mysql_options(gMySqlObj, MYSQL_READ_DEFAULT_GROUP, "server");
+		mysql_options(gMySqlObj, MYSQL_OPT_USE_EMBEDDED_CONNECTION, NULL);
+		if (!mysql_real_connect(gMySqlObj, NULL,NULL,NULL, "sampledb_blackhole", 0,NULL,0)) 
+		{
+			printf("mysql_real_connect failed: %s \n", mysql_error(gMySqlObj));
+			return false;
+		}  
+		return true;
+	} 
+	else 
+	{
+		printf("mysql was never inited succesfully\n");
+		return false;
+	}
 } // initialize_mysql
 
-int run_query(MYSQL *mysql, const char *query) {
-	printf("run_query\n");
-  if (mysql_query(mysql, query)) 
-  {
-    printf("problems running %s , error %s \n", query, mysql_error(mysql));
-    return 1;
-  } else 
-  {
-    return 0;
-  }
+bool run_query(MYSQL *iMySql, const char *iQuery) 
+{
+	if (mysql_query(iMySql, iQuery)) 
+	{
+		printf("problems running %s , error %s \n", iQuery, mysql_error(iMySql));
+		return false;
+	} 
+	else 
+	{
+		return true;
+	}
 } // run_query
 
 /**
@@ -88,31 +78,34 @@ int run_query(MYSQL *mysql, const char *query) {
  */
 int display_results() 
 {
-	printf("display_results\n");
+	MYSQL_RES *lResults;
+	MYSQL_ROW lRow, lEndRow;
+	MYSQL_FIELD *lField;
+	//printf("display_results\n");
 	// select or update based on the field count
-	if (mysql_field_count(mysql) > 0) {
-    int num_fields, i;
-    results = mysql_store_result(mysql);
+	if (mysql_field_count(gMySqlObj) > 0) {
+    int lNumOfFields, i;
+    lResults = mysql_store_result(gMySqlObj);
     
     // used to determine if the query returned any results
-    if (results) 
+    if (lResults) 
     {
-		num_fields = mysql_num_fields(results);
+		lNumOfFields = mysql_num_fields(lResults);
 
       // print the columns
-      for( i = 0; field = mysql_fetch_field(results), i < num_fields; i++) {
-        printf("%s\t", field->name?field->name: "NULL"); 
+      for( i = 0; lField = mysql_fetch_field(lResults), i < lNumOfFields; i++) {
+        printf("%s\t", lField->name?lField->name: "NULL"); 
       }
       printf("\n");
 
       // print the values
-      while((row = mysql_fetch_row(results))) {
-        for (end_row = row + num_fields; row < end_row; ++row) {
-          printf("%s\t", row ? (char*)*row : "NULL"); 
+      while((lRow = mysql_fetch_row(lResults))) {
+        for (lEndRow = lRow + lNumOfFields; lRow < lEndRow; ++lRow) {
+          printf("%s\t", lRow ? (char*)*lRow : "NULL"); 
         }
         printf("\n");
       }
-      mysql_free_result(results);
+      mysql_free_result(lResults);
       return 0;
     } else 
     {
@@ -123,29 +116,39 @@ int display_results()
   else 
   {
     // update/insert so only rows impacted count available
-    printf("Affected rows: %lld\n", mysql_affected_rows(mysql));
+    //printf("Affected rows: %lld\n", mysql_affected_rows(mysql));
     return 0;
   }
 }
 
 int close_mysql() 
 {
-     mysql_close(mysql);
+     mysql_close(gMySqlObj);
      mysql_library_end();
      return 0;
+}
+
+bool checkTableInDatabase(std::string iTableName)
+{
+	std::string lQuery = "desc "+iTableName;
+	if(!initialize_mysql())
+	return false;
+	if(!run_query(gMySqlObj, (char *)lQuery.c_str()))
+	return false;
+	close_mysql();
+	return true;
 }
 
 int main()
 {
 	std::string lQuery;	
+	// set eq_range_index_dive_limit to 0
+	std::string lSetIndexDiveLimit = "set session eq_range_index_dive_limit=0;";
+	queralyzer((char *)lSetIndexDiveLimit.c_str());
 	printf("enter query:\n");
 	std::getline(std::cin, lQuery);
 	if(lQuery.find(setQuery) == std::string::npos)
 	{
-		// set eq_range_index_dive_limit to 0
-		std::string lSetIndexDiveLimit = "set session eq_range_index_dive_limit=0;";
-		queralyzer((char *)lSetIndexDiveLimit.c_str());
-		std::cout<<lQuery<<std::endl;
 		queralyzer((char *)lQuery.c_str());
 	}
 	else
@@ -155,16 +158,22 @@ int main()
 		std::string lTable;
 		size_t lFound;
 		lFound = lQuery.find("=");
-		lTable = lQuery.substr(19,lFound-19);
+		lTable = lQuery.substr(tableCount,lFound-tableCount);
+		// check if the table is present in db
+		if(!checkTableInDatabase(lTable))
+		{
+			std::cout<<"Table not found in db"<<std::endl;
+			return -1;
+		}
 		lQuery=lQuery.substr(lFound+1);
 		lCount = atoi(lQuery.c_str());
 		std::string lLine;
 		bool lFoundTable=false;
 		std::fstream  lRowCountFile;
-		lRowCountFile.open("/tmp/rowcount.txt", std::ios::in | std::ios::out);
+		lRowCountFile.open(rowCountFilePath, std::ios::in | std::ios::out);
 		if(!lRowCountFile.good())
 		{
-			lRowCountFile.open("/tmp/rowcount.txt", std::ios::out );
+			lRowCountFile.open(rowCountFilePath, std::ios::out );
 		}
 		while(std::getline(lRowCountFile, lLine))
 		{
@@ -184,8 +193,6 @@ int main()
 			lRowCountFile<<lTable<<"="<<lCount<<std::endl;
 		}
 		lRowCountFile.close();
-		//std::cout<<"table:"<<lTable<<","<<lCount<<std::endl;
-		
 	}
 	return 0;	    
 }
