@@ -38,5 +38,5 @@ Refer http://dev.mysql.com/doc/refman/5.5/en/source-configuration-options.html f
 
 ### Using queralyzer
 
- 1. Use the query "set count of <table>=<rowcount>" to set the rowcount for specific table (Ex: set count of products=1000)
+ 1. Use the query "set count of table <table>=<rowcount>" to set the rowcount for specific table (Ex: set count of table products=1000)
  2. Give explain command to view the execution plan
