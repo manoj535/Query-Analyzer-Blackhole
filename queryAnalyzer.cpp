@@ -13,7 +13,7 @@ MYSQL *mysql;
 MYSQL_RES *results;
 MYSQL_ROW row, end_row;
 MYSQL_FIELD *field;
-#define setQuery "set count of "
+#define setQuery "set count of table "
 
 static char *server_options[] = \
   { "mysql_test", 
@@ -150,12 +150,12 @@ int main()
 	}
 	else
 	{
-		// if query is "set count of <table>=<count>"
+		// if query is "set count of table <table>=<count>"
 		long lCount=0;
 		std::string lTable;
 		size_t lFound;
 		lFound = lQuery.find("=");
-		lTable = lQuery.substr(13,lFound-13);
+		lTable = lQuery.substr(19,lFound-19);
 		lQuery=lQuery.substr(lFound+1);
 		lCount = atoi(lQuery.c_str());
 		std::string lLine;
