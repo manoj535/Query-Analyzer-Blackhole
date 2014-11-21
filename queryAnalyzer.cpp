@@ -8,6 +8,7 @@
 #include <string>
 #include <iostream>
 #include <fstream>
+#include <map>
 
 MYSQL *gMySqlObj;
 #define setQuery "set count of table "
@@ -153,6 +154,7 @@ int main()
 	}
 	else
 	{
+		std::map<std::string,int> lTableMap;
 		// if query is "set count of table <table>=<count>"
 		long lCount=0;
 		std::string lTable;
@@ -168,28 +170,43 @@ int main()
 		lQuery=lQuery.substr(lFound+1);
 		lCount = atoi(lQuery.c_str());
 		std::string lLine;
+		std::string lTableInFile;
+		int lCountInFile=0;
 		bool lFoundTable=false;
 		std::fstream  lRowCountFile;
 		lRowCountFile.open(rowCountFilePath, std::ios::in | std::ios::out);
 		if(!lRowCountFile.good())
 		{
 			lRowCountFile.open(rowCountFilePath, std::ios::out );
+			lRowCountFile<<lTable<<"="<<lCount<<std::endl;
+			lRowCountFile.close();
+			return 0;
 		}
 		while(std::getline(lRowCountFile, lLine))
 		{
-			lFound=lLine.find(lTable);
-			if(lFound!=std::string::npos)
+			lFound = lLine.find("=");
+			lTableInFile = lLine.substr(0,lFound);
+			lCountInFile = atoi((lLine.substr(lFound+1).c_str()));
+			lTableMap.insert(std::pair<std::string,int>(lTableInFile, lCountInFile));
+			
+		} // while
+		lRowCountFile.clear();
+		lRowCountFile.seekg(0,std::ios::beg);
+		std::map<std::string, int>::iterator lTableMapIterator;
+		
+		for(lTableMapIterator=lTableMap.begin();lTableMapIterator!=lTableMap.end();++lTableMapIterator)
+		{
+			if(lTable == lTableMapIterator->first)
 			{
-				lRowCountFile.seekg(-(lLine.length()+1),std::ios::cur);
 				lRowCountFile<<lTable<<"="<<lCount<<std::endl;
 				lFoundTable=true;
-				break;
 			}
-		}
+			else
+				lRowCountFile<<lTableMapIterator->first<<"="<<lTableMapIterator->second<<std::endl;
+		} // for
+		
 		if(!lFoundTable)
 		{
-			lRowCountFile.clear();
-			//lRowCountFile.seekg(0,std::ios::beg);
 			lRowCountFile<<lTable<<"="<<lCount<<std::endl;
 		}
 		lRowCountFile.close();
