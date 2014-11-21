@@ -9,6 +9,7 @@
 #include <iostream>
 #include <fstream>
 #include <map>
+using namespace std;
 
 MYSQL *gMySqlObj;
 #define setQuery "set count of table "
@@ -93,26 +94,30 @@ int display_results()
     {
 		lNumOfFields = mysql_num_fields(lResults);
 
-      // print the columns
-      for( i = 0; lField = mysql_fetch_field(lResults), i < lNumOfFields; i++) {
-        printf("%s\t", lField->name?lField->name: "NULL"); 
-      }
-      printf("\n");
+		// print the columns
+		for( i = 0; lField = mysql_fetch_field(lResults), i < lNumOfFields; i++) 
+		{
+			printf("%s\t", lField->name?lField->name: "NULL"); 
+		}
+		printf("\n");
 
-      // print the values
-      while((lRow = mysql_fetch_row(lResults))) {
-        for (lEndRow = lRow + lNumOfFields; lRow < lEndRow; ++lRow) {
-          printf("%s\t", lRow ? (char*)*lRow : "NULL"); 
-        }
-        printf("\n");
-      }
-      mysql_free_result(lResults);
-      return 0;
-    } else 
-    {
-      printf("Could not get any results\n");
-      return 1;
-    }
+		// print the values
+		while((lRow = mysql_fetch_row(lResults))) 
+		{
+			for (lEndRow = lRow + lNumOfFields; lRow < lEndRow; ++lRow) 
+			{
+				printf("%s\t", lRow ? (char*)*lRow : "NULL"); 
+			}
+			printf("\n");
+		}
+		mysql_free_result(lResults);
+		return 0;
+    } 
+    else 
+	{
+		printf("Could not get any results\n");
+		return 1;
+	}
   } 
   else 
   {
@@ -131,7 +136,7 @@ int close_mysql()
 
 bool checkTableInDatabase(std::string iTableName)
 {
-	std::string lQuery = "desc "+iTableName;
+	string lQuery = "desc "+iTableName;
 	if(!initialize_mysql())
 	return false;
 	if(!run_query(gMySqlObj, (char *)lQuery.c_str()))
@@ -142,57 +147,57 @@ bool checkTableInDatabase(std::string iTableName)
 
 int main()
 {
-	std::string lQuery;	
+	string lQuery;	
 	// set eq_range_index_dive_limit to 0
-	std::string lSetIndexDiveLimit = "set session eq_range_index_dive_limit=0;";
+	string lSetIndexDiveLimit = "set session eq_range_index_dive_limit=0;";
 	queralyzer((char *)lSetIndexDiveLimit.c_str());
 	printf("enter query:\n");
-	std::getline(std::cin, lQuery);
-	if(lQuery.find(setQuery) == std::string::npos)
+	getline(cin, lQuery);
+	if(lQuery.find(setQuery) == string::npos)
 	{
 		queralyzer((char *)lQuery.c_str());
 	}
 	else
 	{
-		std::map<std::string,int> lTableMap;
+		map<string,int> lTableMap;
 		// if query is "set count of table <table>=<count>"
 		long lCount=0;
-		std::string lTable;
+		string lTable;
 		size_t lFound;
 		lFound = lQuery.find("=");
 		lTable = lQuery.substr(tableCount,lFound-tableCount);
 		// check if the table is present in db
 		if(!checkTableInDatabase(lTable))
 		{
-			std::cout<<"Table not found in db"<<std::endl;
+			cout<<"Table not found in db"<<endl;
 			return -1;
 		}
 		lQuery=lQuery.substr(lFound+1);
 		lCount = atoi(lQuery.c_str());
-		std::string lLine;
-		std::string lTableInFile;
-		int lCountInFile=0;
+		string lLine;
+		string lTableInFile;
+		long lCountInFile=0;
 		bool lFoundTable=false;
-		std::fstream  lRowCountFile;
-		lRowCountFile.open(rowCountFilePath, std::ios::in | std::ios::out);
+		fstream  lRowCountFile;
+		lRowCountFile.open(rowCountFilePath, ios::in | ios::out);
 		if(!lRowCountFile.good())
 		{
-			lRowCountFile.open(rowCountFilePath, std::ios::out );
-			lRowCountFile<<lTable<<"="<<lCount<<std::endl;
+			lRowCountFile.open(rowCountFilePath, ios::out );
+			lRowCountFile<<lTable<<"="<<lCount<<endl;
 			lRowCountFile.close();
 			return 0;
 		}
-		while(std::getline(lRowCountFile, lLine))
+		while(getline(lRowCountFile, lLine))
 		{
 			lFound = lLine.find("=");
 			lTableInFile = lLine.substr(0,lFound);
 			lCountInFile = atoi((lLine.substr(lFound+1).c_str()));
-			lTableMap.insert(std::pair<std::string,int>(lTableInFile, lCountInFile));
+			lTableMap.insert(pair<string,int>(lTableInFile, lCountInFile));
 			
 		} // while
 		lRowCountFile.clear();
-		lRowCountFile.seekg(0,std::ios::beg);
-		std::map<std::string, int>::iterator lTableMapIterator;
+		lRowCountFile.seekg(0,ios::beg);
+		map<string, int>::iterator lTableMapIterator;
 		
 		for(lTableMapIterator=lTableMap.begin();lTableMapIterator!=lTableMap.end();++lTableMapIterator)
 		{
