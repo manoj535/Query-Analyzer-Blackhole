@@ -158,6 +158,7 @@ int main()
 		break;
 		if(lQuery.find(setQuery) == string::npos)
 		{
+			if(lQuery.length()>1)
 			queralyzer((char *)lQuery.c_str());
 		}
 		else
