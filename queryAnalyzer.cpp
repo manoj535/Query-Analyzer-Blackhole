@@ -185,11 +185,13 @@ int main()
 			lRowCountFile.open(rowCountFilePath, ios::in | ios::out);
 			if(!lRowCountFile.good())
 			{
+				// if row count file not present
 				lRowCountFile.open(rowCountFilePath, ios::out );
 				lRowCountFile<<lTable<<"="<<lCount<<endl;
 				lRowCountFile.close();
 				return 0;
 			}
+			// populate lTableMap
 			while(getline(lRowCountFile, lLine))
 			{
 				lFound = lLine.find("=");
