@@ -47,7 +47,7 @@ bool initialize_mysql()
 	{
 		mysql_options(gMySqlObj, MYSQL_READ_DEFAULT_GROUP, "server");
 		mysql_options(gMySqlObj, MYSQL_OPT_USE_EMBEDDED_CONNECTION, NULL);
-		if (!mysql_real_connect(gMySqlObj, NULL,NULL,NULL, "sampledb_blackhole", 0,NULL,0)) 
+		if (!mysql_real_connect(gMySqlObj, NULL,NULL,NULL, "sampledb_fakeengine", 0,NULL,0)) 
 		{
 			printf("mysql_real_connect failed: %s \n", mysql_error(gMySqlObj));
 			return false;
