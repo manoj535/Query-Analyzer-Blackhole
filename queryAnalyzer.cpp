@@ -195,10 +195,11 @@ int main()
 			lTableMap.insert(pair<string,int>(lTableInFile, lCountInFile));
 			
 		} // while
-		lRowCountFile.clear();
-		lRowCountFile.seekg(0,ios::beg);
+		lRowCountFile.close();
+		//lRowCountFile.clear();
+		//lRowCountFile.seekg(0,ios::beg);
 		map<string, int>::iterator lTableMapIterator;
-		
+		lRowCountFile.open(rowCountFilePath, ios::out );
 		for(lTableMapIterator=lTableMap.begin();lTableMapIterator!=lTableMap.end();++lTableMapIterator)
 		{
 			if(lTable == lTableMapIterator->first)
