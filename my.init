@@ -7,9 +7,10 @@ skip-grant-tables=0
 innodb=OFF
 default-storage-engine=MyISAM
 #plugin-name=qa_blackhole
-plugin-load=qa_blackhole=ha_blackhole
+#plugin-load=qa_blackhole=ha_blackhole
 #plugin-load=example=ha_example
 #plugin-load=myplugin=myplugin
+plugin-load=FAKEENGINE=ha_fakeengine
 plugin-dir=./plugin/
 server_id = 1
 log-output=FILE
