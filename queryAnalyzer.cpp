@@ -151,71 +151,75 @@ int main()
 	// set eq_range_index_dive_limit to 0
 	string lSetIndexDiveLimit = "set session eq_range_index_dive_limit=0;";
 	queralyzer((char *)lSetIndexDiveLimit.c_str());
-	printf("enter query:\n");
-	getline(cin, lQuery);
-	if(lQuery.find(setQuery) == string::npos)
+	while(1)
 	{
-		queralyzer((char *)lQuery.c_str());
-	}
-	else
-	{
-		map<string,int> lTableMap;
-		// if query is "set count of table <table>=<count>"
-		long lCount=0;
-		string lTable;
-		size_t lFound;
-		lFound = lQuery.find("=");
-		lTable = lQuery.substr(tableCount,lFound-tableCount);
-		// check if the table is present in db
-		if(!checkTableInDatabase(lTable))
+		getline(cin, lQuery);
+		if(lQuery=="quit")
+		break;
+		if(lQuery.find(setQuery) == string::npos)
 		{
-			cout<<"Table not found in db"<<endl;
-			return -1;
+			queralyzer((char *)lQuery.c_str());
 		}
-		lQuery=lQuery.substr(lFound+1);
-		lCount = atoi(lQuery.c_str());
-		string lLine;
-		string lTableInFile;
-		long lCountInFile=0;
-		bool lFoundTable=false;
-		fstream  lRowCountFile;
-		lRowCountFile.open(rowCountFilePath, ios::in | ios::out);
-		if(!lRowCountFile.good())
+		else
 		{
-			lRowCountFile.open(rowCountFilePath, ios::out );
-			lRowCountFile<<lTable<<"="<<lCount<<endl;
+			map<string,int> lTableMap;
+			// if query is "set count of table <table>=<count>"
+			long lCount=0;
+			string lTable;
+			size_t lFound;
+			lFound = lQuery.find("=");
+			lTable = lQuery.substr(tableCount,lFound-tableCount);
+			// check if the table is present in db
+			if(!checkTableInDatabase(lTable))
+			{
+				cout<<"Table not found in db"<<endl;
+				return -1;
+			} // if
+			lQuery=lQuery.substr(lFound+1);
+			lCount = atoi(lQuery.c_str());
+			string lLine;
+			string lTableInFile;
+			long lCountInFile=0;
+			bool lFoundTable=false;
+			fstream  lRowCountFile;
+			lRowCountFile.open(rowCountFilePath, ios::in | ios::out);
+			if(!lRowCountFile.good())
+			{
+				lRowCountFile.open(rowCountFilePath, ios::out );
+				lRowCountFile<<lTable<<"="<<lCount<<endl;
+				lRowCountFile.close();
+				return 0;
+			}
+			while(getline(lRowCountFile, lLine))
+			{
+				lFound = lLine.find("=");
+				lTableInFile = lLine.substr(0,lFound);
+				lCountInFile = atoi((lLine.substr(lFound+1).c_str()));
+				lTableMap.insert(pair<string,int>(lTableInFile, lCountInFile));
+				
+			} // while
 			lRowCountFile.close();
-			return 0;
-		}
-		while(getline(lRowCountFile, lLine))
-		{
-			lFound = lLine.find("=");
-			lTableInFile = lLine.substr(0,lFound);
-			lCountInFile = atoi((lLine.substr(lFound+1).c_str()));
-			lTableMap.insert(pair<string,int>(lTableInFile, lCountInFile));
-			
-		} // while
-		lRowCountFile.close();
-		//lRowCountFile.clear();
-		//lRowCountFile.seekg(0,ios::beg);
-		map<string, int>::iterator lTableMapIterator;
-		lRowCountFile.open(rowCountFilePath, ios::out );
-		for(lTableMapIterator=lTableMap.begin();lTableMapIterator!=lTableMap.end();++lTableMapIterator)
-		{
-			if(lTable == lTableMapIterator->first)
+			//lRowCountFile.clear();
+			//lRowCountFile.seekg(0,ios::beg);
+			map<string, int>::iterator lTableMapIterator;
+			lRowCountFile.open(rowCountFilePath, ios::out );
+			for(lTableMapIterator=lTableMap.begin();lTableMapIterator!=lTableMap.end();++lTableMapIterator)
+			{
+				if(lTable == lTableMapIterator->first)
+				{
+					lRowCountFile<<lTable<<"="<<lCount<<std::endl;
+					lFoundTable=true;
+				}
+				else
+					lRowCountFile<<lTableMapIterator->first<<"="<<lTableMapIterator->second<<std::endl;
+			} // for
+		
+			if(!lFoundTable)
 			{
 				lRowCountFile<<lTable<<"="<<lCount<<std::endl;
-				lFoundTable=true;
 			}
-			else
-				lRowCountFile<<lTableMapIterator->first<<"="<<lTableMapIterator->second<<std::endl;
-		} // for
-		
-		if(!lFoundTable)
-		{
-			lRowCountFile<<lTable<<"="<<lCount<<std::endl;
-		}
-		lRowCountFile.close();
-	}
+			lRowCountFile.close();
+		} // else
+	} // while
 	return 0;	    
 }
