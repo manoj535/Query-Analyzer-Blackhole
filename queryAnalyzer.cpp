@@ -155,9 +155,9 @@ bool run_query(MYSQL *iMySql, const char *iQuery)
  */
 int display_results() 
 {
-	MYSQL_RES *lResults;
+	MYSQL_RES *lResults = NULL;
 	MYSQL_ROW lRow, lEndRow;
-	MYSQL_FIELD *lField;
+	MYSQL_FIELD *lField = NULL;
 	//printf("display_results\n");
 	// select or update based on the field count
 	if (mysql_field_count(gMySqlObj) > 0) {
