@@ -58,6 +58,7 @@ bool queralyzer()
 				cout<<"Table not found in db"<<endl;
 				return false;
 			} // if
+			
 			lQuery=lQuery.substr(lFound+1);
 			lCount = atoi(lQuery.c_str());
 			string lLine;
@@ -212,9 +213,13 @@ int close_mysql()
 bool checkTableInDatabase(std::string iTableName)
 {
 	bool lResult = true;
+	MYSQL_RES *lResultOfQuery = NULL;
 	string lQuery = "desc "+iTableName;
 	if(!run_query(gMySqlObj, (char *)lQuery.c_str()))
 	lResult=false;
+	// free the results as we dont need to display it
+	lResultOfQuery = mysql_store_result(gMySqlObj);
+	mysql_free_result(lResultOfQuery);
 	return lResult;
 }
 
