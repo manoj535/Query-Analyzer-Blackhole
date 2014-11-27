@@ -12,9 +12,16 @@
 using namespace std;
 
 MYSQL *gMySqlObj;
-#define setQuery "set count of table "
-#define rowCountFilePath "/tmp/rowcount.txt"
-#define tableCount 19
+#define kSetQuery "set count of table "
+#define kSetIndexRangeQuery "set range of index "
+#define kSetIndexCardinalityQuery "set count of index "
+#define kRowCountFilePath "/tmp/rowcount.txt"
+#define kIndexCountFilePath "/tmp/indexcount.txt"
+#define kIndexRangeFilePath "/tmp/indexrangecount.txt"
+#define kIsEqual "="
+#define kComma ","
+#define kFindTable "from"
+#define kTableCount 19
 
 bool run_query(MYSQL *mysql, const char *query);
 bool checkTableInDatabase(std::string iTableName);
@@ -25,6 +32,10 @@ bool initialize_mysql();
 int close_mysql();
 
 int display_results();
+
+bool processSetCountTableQuery(string iQuery);
+
+bool processSetCountIndexQuery(string iIndexFilePath, string iQuery);
 
 bool queralyzer() 
 {
@@ -37,75 +48,28 @@ bool queralyzer()
 		getline(cin, lQuery);
 		if(lQuery=="quit")
 		break;
-		if(lQuery.find(setQuery) == string::npos)
+		
+		if(lQuery.find(kSetQuery) != string::npos)
+		{
+			// if query is "set count of table <tablename>=<count>"
+			processSetCountTableQuery(lQuery);
+		} // if
+		else if(lQuery.find(kSetIndexCardinalityQuery) != string::npos)
+		{
+			// if query is "set count of index <indexname> from <tablename>=<count>"
+			processSetCountIndexQuery(kIndexCountFilePath, lQuery);
+		}
+		else if(lQuery.find(kSetIndexRangeQuery) != string::npos)
+		{
+			// if query is "set range of index <indexname> from <tablename>=<count>"
+			processSetCountIndexQuery(kIndexRangeFilePath, lQuery);
+		}
+		else
 		{
 			if(lQuery.length()>1)
 			run_query(gMySqlObj, lQuery.c_str());
 			display_results();
 		}
-		else
-		{
-			map<string,int> lTableMap;
-			// if query is "set count of table <table>=<count>"
-			long lCount=0;
-			string lTable;
-			size_t lFound;
-			lFound = lQuery.find("=");
-			lTable = lQuery.substr(tableCount,lFound-tableCount);
-			// check if the table is present in db
-			if(!checkTableInDatabase(lTable))
-			{
-				cout<<"Table not found in db"<<endl;
-				return false;
-			} // if
-			
-			lQuery=lQuery.substr(lFound+1);
-			lCount = atoi(lQuery.c_str());
-			string lLine;
-			string lTableInFile;
-			long lCountInFile=0;
-			bool lFoundTable=false;
-			fstream  lRowCountFile;
-			lRowCountFile.open(rowCountFilePath, ios::in | ios::out);
-			if(!lRowCountFile.good())
-			{
-				// if row count file not present
-				lRowCountFile.open(rowCountFilePath, ios::out );
-				lRowCountFile<<lTable<<"="<<lCount<<endl;
-				lRowCountFile.close();
-				return false;
-			}
-			// populate lTableMap
-			while(getline(lRowCountFile, lLine))
-			{
-				lFound = lLine.find("=");
-				lTableInFile = lLine.substr(0,lFound);
-				lCountInFile = atoi((lLine.substr(lFound+1).c_str()));
-				lTableMap.insert(pair<string,int>(lTableInFile, lCountInFile));
-				
-			} // while
-			lRowCountFile.close();
-			//lRowCountFile.clear();
-			//lRowCountFile.seekg(0,ios::beg);
-			map<string, int>::iterator lTableMapIterator;
-			lRowCountFile.open(rowCountFilePath, ios::out );
-			for(lTableMapIterator=lTableMap.begin();lTableMapIterator!=lTableMap.end();++lTableMapIterator)
-			{
-				if(lTable == lTableMapIterator->first)
-				{
-					lRowCountFile<<lTable<<"="<<lCount<<std::endl;
-					lFoundTable=true;
-				}
-				else
-					lRowCountFile<<lTableMapIterator->first<<"="<<lTableMapIterator->second<<std::endl;
-			} // for
-		
-			if(!lFoundTable)
-			{
-				lRowCountFile<<lTable<<"="<<lCount<<std::endl;
-			}
-			lRowCountFile.close();
-		} // else
 	} // while
 	close_mysql();
 	return true;
@@ -113,6 +77,7 @@ bool queralyzer()
 
 bool initialize_mysql()
 {
+	string kDatabaseName = "sampledb_fakeengine";
 	static char *lServerOptions[] = { "mysql_test", "--defaults-file=my.init", NULL };
 	int lNumOfElements = (sizeof(lServerOptions) / sizeof(char *)) - 1;
 	static char *lServerGroups[] = { "server", NULL };
@@ -122,16 +87,16 @@ bool initialize_mysql()
 	{
 		mysql_options(gMySqlObj, MYSQL_READ_DEFAULT_GROUP, "server");
 		mysql_options(gMySqlObj, MYSQL_OPT_USE_EMBEDDED_CONNECTION, NULL);
-		if (!mysql_real_connect(gMySqlObj, NULL,NULL,NULL, "sampledb_fakeengine", 0,NULL,0)) 
+		if ( !mysql_real_connect(gMySqlObj, NULL, NULL, NULL, kDatabaseName.c_str(), 0, NULL, 0))
 		{
-			printf("mysql_real_connect failed: %s \n", mysql_error(gMySqlObj));
+			cout<<"mysql_real_connect failed:"<<mysql_error(gMySqlObj)<<endl;
 			return false;
 		}  
 		return true;
 	} 
 	else 
 	{
-		printf("mysql was never inited succesfully\n");
+		cout<<"mysql was never inited succesfully"<<endl;
 		return false;
 	}
 } // initialize_mysql
@@ -140,7 +105,7 @@ bool run_query(MYSQL *iMySql, const char *iQuery)
 {
 	if (mysql_query(iMySql, iQuery)) 
 	{
-		printf("problems running %s , error %s \n", iQuery, mysql_error(iMySql));
+		cout<<"problems running :"<< iQuery<<", error :"<<mysql_error(iMySql)<<endl;
 		return false;
 	} 
 	else 
@@ -158,7 +123,6 @@ int display_results()
 	MYSQL_RES *lResults = NULL;
 	MYSQL_ROW lRow, lEndRow;
 	MYSQL_FIELD *lField = NULL;
-	//printf("display_results\n");
 	// select or update based on the field count
 	if (mysql_field_count(gMySqlObj) > 0) {
     int lNumOfFields, i;
@@ -172,25 +136,27 @@ int display_results()
 		// print the columns
 		for( i = 0; lField = mysql_fetch_field(lResults), i < lNumOfFields; i++) 
 		{
-			printf("%s\t", lField->name?lField->name: "NULL"); 
+			//cout<<(lField->name?lField->name: "NULL")<<"\t"; 
+			printf("%s\t",lField->name?lField->name: "NULL");
 		}
-		printf("\n");
-
+		
+		cout<<endl;
 		// print the values
 		while((lRow = mysql_fetch_row(lResults))) 
 		{
 			for (lEndRow = lRow + lNumOfFields; lRow < lEndRow; ++lRow) 
 			{
-				printf("%s\t", lRow ? (char*)*lRow : "NULL"); 
+				//cout<<(lRow ? (char*)*lRow : "NULL")<<"\t";				
+				printf("%s\t",lRow ? (char*)*lRow : "NULL");
 			}
-			printf("\n");
+			cout<<endl;
 		}
 		mysql_free_result(lResults);
 		return 0;
     } 
     else 
 	{
-		printf("Could not get any results\n");
+		cout<<"Could not get any results"<<endl;
 		return 1;
 	}
   } 
@@ -222,6 +188,147 @@ bool checkTableInDatabase(std::string iTableName)
 	mysql_free_result(lResultOfQuery);
 	return lResult;
 }
+
+
+bool processSetCountTableQuery(string iQuery)
+{
+	map<string,int> lTableMap;
+	// if query is "set count of table <table>=<count>"
+	long lCount=0;
+	string lTable;
+	size_t lFound;
+	lFound = iQuery.find(kIsEqual);
+	lTable = iQuery.substr(kTableCount,lFound-kTableCount);
+	// check if the table is present in db
+	if(!checkTableInDatabase(lTable))
+	{
+		cout<<"Table not found in db"<<endl;
+		return false;
+	} // if
+			
+	iQuery=iQuery.substr(lFound+1);
+	lCount = atoi(iQuery.c_str());
+	string lLine;
+	string lTableInFile;
+	long lCountInFile=0;
+	bool lFoundTable=false;
+	fstream  lRowCountFile;
+	lRowCountFile.open(kRowCountFilePath, ios::in | ios::out);
+	if(!lRowCountFile.good())
+	{
+		// if row count file not present
+		lRowCountFile.open(kRowCountFilePath, ios::out );
+		lRowCountFile<<lTable<<kIsEqual<<lCount<<endl;
+		lRowCountFile.close();
+		return true;
+	}
+	// populate lTableMap
+	while(getline(lRowCountFile, lLine))
+	{
+		lFound = lLine.find(kIsEqual);
+		lTableInFile = lLine.substr(0,lFound);
+		lCountInFile = atoi((lLine.substr(lFound+1).c_str()));
+		lTableMap.insert(pair<string,int>(lTableInFile, lCountInFile));
+				
+	} // while
+	lRowCountFile.close();
+	//lRowCountFile.clear();
+	//lRowCountFile.seekg(0,ios::beg);
+	map<string, int>::iterator lTableMapIterator;
+	lRowCountFile.open(kRowCountFilePath, ios::out );
+	for(lTableMapIterator=lTableMap.begin();lTableMapIterator!=lTableMap.end();++lTableMapIterator)
+	{
+		if(lTable == lTableMapIterator->first)
+		{
+			lRowCountFile<<lTable<<kIsEqual<<lCount<<endl;
+			lFoundTable=true;
+		}
+		else
+			lRowCountFile<<lTableMapIterator->first<<kIsEqual<<lTableMapIterator->second<<endl;
+	} // for
+		
+	if(!lFoundTable)
+	{
+		lRowCountFile<<lTable<<kIsEqual<<lCount<<endl;
+	}
+	lRowCountFile.close();
+	return true;
+}
+
+bool processSetCountIndexQuery(string iIndexFilePath, string iQuery)
+{
+	map<pair<string,string>, int> lIndexMap;
+	// if query is "set count of index <indexname> from <tablename>=<count>"
+	long lCount=0;
+	string lTable, lIndex;
+	size_t lFound,lFound2;
+	lFound = iQuery.find(kIsEqual);
+	lFound2 = iQuery.find(kFindTable);
+	lIndex = iQuery.substr(kTableCount,lFound2-kTableCount-1);
+	lTable = iQuery.substr(lFound2+5,lFound-lFound2-5);
+	
+	// check if the table is present in db
+	if(!checkTableInDatabase(lTable))
+	{
+		cout<<"Table not found in db"<<endl;
+		return false;
+	} // if
+			
+	iQuery=iQuery.substr(lFound+1);
+	lCount = atoi(iQuery.c_str());
+	string lLine;
+	string lTableInFile;
+	long lCountInFile=0;
+	bool lFoundTable=false;
+	fstream  lIndexCountFile;
+	lIndexCountFile.open(iIndexFilePath.c_str(), ios::in | ios::out);
+	if(!lIndexCountFile.good())
+	{
+		// if index count file not present
+		lIndexCountFile.open(iIndexFilePath.c_str(), ios::out );
+		lIndexCountFile<<lTable<<kComma<<lIndex<<kIsEqual<<lCount<<endl;
+		lIndexCountFile.close();
+		return true;
+	}
+	size_t lFoundComma;
+	string lIndexInFile;
+	// populate lIndexMap
+	while(getline(lIndexCountFile, lLine))
+	{
+		lFound = lLine.find(kComma);
+		lTableInFile = lLine.substr(0,lFound);
+		lFoundComma = lLine.find(kIsEqual);
+		lIndexInFile = lLine.substr(lFound+1,lFoundComma-lFound-1);
+		lCountInFile = atoi((lLine.substr(lFoundComma+1).c_str()));
+		lIndexMap.insert(pair<pair<string, string>, int>(make_pair(lTableInFile, lIndexInFile), lCountInFile));
+				
+	} // while
+	lIndexCountFile.close();
+	//lRowCountFile.clear();
+	//lRowCountFile.seekg(0,ios::beg);
+	map<pair<string, string>, int>::iterator lIndexMapIterator;
+	lIndexCountFile.open(iIndexFilePath.c_str(), ios::out );
+	for(lIndexMapIterator=lIndexMap.begin();lIndexMapIterator!=lIndexMap.end();++lIndexMapIterator)
+	{
+		if(lTable == (lIndexMapIterator->first).first && lIndex==(lIndexMapIterator->first).second)
+		{
+			lIndexCountFile<<lTable<<kComma<<lIndex<<kIsEqual<<lCount<<std::endl;
+			lFoundTable=true;
+		}
+		else
+			lIndexCountFile<<(lIndexMapIterator->first).first<<kComma<<(lIndexMapIterator->first).second<<kIsEqual<<
+								lIndexMapIterator->second<<std::endl;
+	} // for
+		
+	if(!lFoundTable)
+	{
+		lIndexCountFile<<lTable<<kComma<<lIndex<<kIsEqual<<lCount<<std::endl;
+	}
+	lIndexCountFile.close();
+	return true;
+}
+
+
 
 int main()
 {
