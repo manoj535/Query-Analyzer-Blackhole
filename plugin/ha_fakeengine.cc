@@ -41,7 +41,8 @@ static void free_share(st_fakeengine_share *share);
 
 ha_fakeengine::ha_fakeengine(handlerton *hton,
                            TABLE_SHARE *table_arg)
-  :handler(hton, table_arg),kRowCountFilePath("/tmp/rowcount.txt")
+  :handler(hton, table_arg),kRowCountFilePath("/tmp/rowcount.txt"),
+  kIndexCardinalityFilePath("/tmp/indexcount.txt"), kIndexRangeFilePath("/tmp/indexrangecount.txt")
 {
 	mDefaultRowCount=10000;
 	
@@ -220,9 +221,9 @@ int ha_fakeengine::info(uint flag)
 				if(lFound != string::npos)
 				{
 					lTemp=lLine.substr(mTableName.length()+1);
-				lRowCount = atoi(lTemp.c_str());
-				break;
-			} // if
+					lRowCount = atoi(lTemp.c_str());
+					break;
+				} // if
 			
 			} // while
 			if(lRowCount)
@@ -248,32 +249,107 @@ int ha_fakeengine::info(uint flag)
 	} // if
 	
 	// set index cardinality
-	/*if (flag & HA_STATUS_VARIABLE)
+	if (flag & HA_STATUS_VARIABLE)
 	{
-		//printf("info:constant\n");
+		string lIndexName;
+		int lIndexCardinality = 0;
 		for (int i = 0; i < table->s->keys; i++) 
 		{
+			lIndexName = table->key_info[i].name;
+			lIndexCardinality = getIndexCount(kIndexCardinalityFilePath, lIndexName);
+			// if cardinality is not mentioned in file, by default make index as unique index
+			if(!lIndexCardinality)
+			lIndexCardinality = stats.records;
 			for (int j = 0; j < table->key_info[i].actual_key_parts; j++) 
 			{
-				//if (table->key_info[i].flags & HA_FULLTEXT) 
-				//{
-				//printf("testing\n");
-				table->key_info[i].rec_per_key[j] = 1;
-				//continue;
-			//}
-			}
-		}
-	}*/
+				if(lIndexName=="PRIMARY")
+				{
+					table->key_info[i].rec_per_key[j] = 1;
+				}
+				else
+				{
+					table->key_info[i].rec_per_key[j] = stats.records/lIndexCardinality;
+					//lIndexList.push_back(lIndexName);
+				}
+			} // for
+		} // for
+	}
   
 	if (flag & HA_STATUS_AUTO)
 		stats.auto_increment_value= 1;
 	DBUG_RETURN(0);
 }
 
+/*double ha_fakeengine::scan_time()
+{
+	cout<<"scan_time"<<endl;
+	return 100000000;
+}*/
+
+/*double ha_fakeengine::read_time(uint index, uint ranges, ha_rows rows)
+{
+	cout<<"ha_fakeengine::read_time"<<endl;
+	return 1000;
+}*/
+
+/*ha_rows 
+ha_fakeengine::multi_range_read_info_const(uint keyno, RANGE_SEQ_IF *seq,
+                                     void *seq_init_param, uint n_ranges_arg,
+                                     uint *bufsz, uint *flags, 
+                                     Cost_estimate *cost)
+{
+	cout<<"multi_range_read_info_const"<<endl;
+    return records_in_range(keyno, NULL, NULL);
+}*/
+
+/*double ha_fakeengine::index_only_read_time(uint keynr, double records)
+{
+	cout<<"index_only_read_time"<<endl;
+	return 1000;
+}*/
+
 ha_rows ha_fakeengine::records_in_range(uint inx,key_range *min_key,key_range *max_key)
 {
-	//printf("ha_fakeengine::records_in_range:%d\n",inx);
+	string lIndexName = table->key_info[inx].name;
+	//cout<<"records_in_range:table:"<<mTableName<<":"<<lIndexName<<endl;
+	long lResult = getIndexCount(kIndexRangeFilePath,lIndexName);
+	if(!lResult)
 	return FAKEENGINE_REC_RANGE;
+	else
+	return lResult;
+}
+
+long ha_fakeengine::getIndexCount(string iFilePath, string iIndexName)
+{
+	size_t lFound,lFoundComma;
+	long lResult = 0;
+	fstream  lCountFile;
+	string lTableInFile;
+	string lIndexInFile;
+	long lCountInFile = 0;
+	string lLine;
+	lCountFile.open(iFilePath.c_str(), ios::in);
+	if(lCountFile.good())
+	{
+		while(getline(lCountFile, lLine))
+		{
+			lFound = lLine.find(",");
+			lTableInFile = lLine.substr(0,lFound);
+			lFoundComma = lLine.find("=");
+			lIndexInFile = lLine.substr(lFound+1,lFoundComma-lFound-1);
+			lCountInFile = atoi((lLine.substr(lFoundComma+1).c_str()));
+			
+			//if(lTableInFile == mTableName && lIndexInFile == lIndexName)
+			if(!strncasecmp(lTableInFile.c_str(), mTableName.c_str(),mTableName.length()) &&
+					!strncasecmp(lIndexInFile.c_str(), iIndexName.c_str(),iIndexName.length()) )
+			{
+				lResult = lCountInFile;
+				break;
+			} // if
+		} // while
+	} // if
+	lCountFile.close();
+	return lResult;
 }
 
 int ha_fakeengine::external_lock(THD *thd, int lock_type)

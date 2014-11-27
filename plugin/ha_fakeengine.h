@@ -4,6 +4,7 @@
 #include <string>
 #include <fstream>
 #include <iostream>
+#include <map>
 using namespace std;
 
 /*
@@ -86,10 +87,21 @@ public:
 	THR_LOCK_DATA **store_lock(THD *thd,
                              THR_LOCK_DATA **to,
                              enum thr_lock_type lock_type);
+     /*ha_rows multi_range_read_info_const(uint keyno, RANGE_SEQ_IF *seq,
+                                     void *seq_init_param, uint n_ranges_arg,
+                                     uint *bufsz, uint *flags, 
+                                     Cost_estimate *cost);*/
+     //double read_time(uint index, uint ranges, ha_rows rows);
+     //double scan_time();
+     //double index_only_read_time(uint keynr, double records);
 private:
 	int mDefaultRowCount; // Default row count if not given config file
 	std::string mTableName;
 	const string kRowCountFilePath;
+	const string kIndexCardinalityFilePath;
+	const string kIndexRangeFilePath;
+	long getIndexCount(string iFilePath, string iIndexName);
+	//map<std::pair<std::string,std::string>, int> mIndexMap;
 	virtual int write_row(uchar *buf);
 	virtual int update_row(const uchar *old_data, uchar *new_data);
 	virtual int delete_row(const uchar *buf);
