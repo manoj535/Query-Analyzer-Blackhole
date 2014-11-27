@@ -39,5 +39,7 @@ Refer http://dev.mysql.com/doc/refman/5.5/en/source-configuration-options.html f
 ### Using queralyzer
 
  1. Use the query "set count of table <tablename>=<rowcount>" to set the rowcount for specific table (Ex: set count of table products=1000). By default rowcount for table is 10000.
- 2. In create queries, add "engine=FAKEENGINE" to create the table with our custom storage engine.
- 3. Give explain command to view the execution plan.
+ 2. Use the query "set count of index <indexname> from <tablename>=<cardinality> to set the cardinality for specific index (Ex: set count of index idx_buyprice from products=200). By default cardinality is set to rowcount of table (UNIQUE INDEX).
+ 3. Use the query "set range of index <indexname> from <tablename>=<range> to set the range for specific index (Ex: set count of index idx_buyprice from products=200). By default range count is set to 3.
+ 4. In create queries, add "engine=FAKEENGINE" to create the table with our custom storage engine.
+ 5. Give explain command to view the execution plan.
