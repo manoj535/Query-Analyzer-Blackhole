@@ -37,18 +37,20 @@ bool processSetCountTableQuery(string iQuery);
 
 bool processSetCountIndexQuery(string iIndexFilePath, string iQuery);
 
-bool queralyzer() 
+bool queralyzer(char *iQuery) 
 {
 	string lQuery;
 	if(!initialize_mysql())
 	return false;
-	
-	while(1)
+	if(iQuery!=NULL)
 	{
-		getline(cin, lQuery);
-		if(lQuery=="quit")
-		break;
-		
+		// If queryanalyzer is invoked from http
+		string lQuery = string(iQuery);
+		if(lQuery[0]=='"' && lQuery[lQuery.length()-1] == '"') 
+		{
+			// remove the extra quotes
+			lQuery=lQuery.substr(1,lQuery.length()-2);
+		}
 		if(lQuery.find(kSetQuery) != string::npos)
 		{
 			// if query is "set count of table <tablename>=<count>"
@@ -70,7 +72,41 @@ bool queralyzer()
 			run_query(gMySqlObj, lQuery.c_str());
 			display_results();
 		}
-	} // while
+	}
+	else
+	{
+		// if queryanalyzer is invoked on local machine
+		while(1)
+		{
+			//fflush(stdin);
+			getline(cin, lQuery, ';');
+			cin.ignore();
+			if(lQuery=="quit")
+			break;
+			
+			if(lQuery.find(kSetQuery) != string::npos)
+			{
+				// if query is "set count of table <tablename>=<count>"
+				processSetCountTableQuery(lQuery);
+			} // if
+			else if(lQuery.find(kSetIndexCardinalityQuery) != string::npos)
+			{
+				// if query is "set count of index <indexname> from <tablename>=<count>"
+				processSetCountIndexQuery(kIndexCountFilePath, lQuery);
+			}
+			else if(lQuery.find(kSetIndexRangeQuery) != string::npos)
+			{
+				// if query is "set range of index <indexname> from <tablename>=<count>"
+				processSetCountIndexQuery(kIndexRangeFilePath, lQuery);
+			}
+			else
+			{
+				if(lQuery.length()>1)
+				run_query(gMySqlObj, lQuery.c_str());
+				display_results();
+			}
+		} // while
+    } // else
 	close_mysql();
 	return true;
 }
@@ -78,7 +114,7 @@ bool queralyzer()
 bool initialize_mysql()
 {
 	string kDatabaseName = "sampledb_fakeengine";
-	static char *lServerOptions[] = { "mysql_test", "--defaults-file=my.init", NULL };
+	static char *lServerOptions[] = { "mysql_test", "--defaults-file=/opt/queralyzer/my.init", NULL };
 	int lNumOfElements = (sizeof(lServerOptions) / sizeof(char *)) - 1;
 	static char *lServerGroups[] = { "server", NULL };
 	mysql_library_init(lNumOfElements, lServerOptions, lServerGroups);
@@ -136,7 +172,6 @@ int display_results()
 		// print the columns
 		for( i = 0; lField = mysql_fetch_field(lResults), i < lNumOfFields; i++) 
 		{
-			//cout<<(lField->name?lField->name: "NULL")<<"\t"; 
 			printf("%s\t",lField->name?lField->name: "NULL");
 		}
 		
@@ -146,7 +181,6 @@ int display_results()
 		{
 			for (lEndRow = lRow + lNumOfFields; lRow < lEndRow; ++lRow) 
 			{
-				//cout<<(lRow ? (char*)*lRow : "NULL")<<"\t";				
 				printf("%s\t",lRow ? (char*)*lRow : "NULL");
 			}
 			cout<<endl;
@@ -220,6 +254,7 @@ bool processSetCountTableQuery(string iQuery)
 		lRowCountFile.open(kRowCountFilePath, ios::out );
 		lRowCountFile<<lTable<<kIsEqual<<lCount<<endl;
 		lRowCountFile.close();
+		cout<<"set count of table "<<lTable<<" to "<<lCount<<" successfull"<<endl;
 		return true;
 	}
 	// populate lTableMap
@@ -244,13 +279,16 @@ bool processSetCountTableQuery(string iQuery)
 			lFoundTable=true;
 		}
 		else
+		{
 			lRowCountFile<<lTableMapIterator->first<<kIsEqual<<lTableMapIterator->second<<endl;
+		}
 	} // for
 		
 	if(!lFoundTable)
 	{
 		lRowCountFile<<lTable<<kIsEqual<<lCount<<endl;
 	}
+	cout<<"set count of table "<<lTable<<" to "<<lCount<<" successfull"<<endl;
 	lRowCountFile.close();
 	return true;
 }
@@ -287,6 +325,7 @@ bool processSetCountIndexQuery(string iIndexFilePath, string iQuery)
 		// if index count file not present
 		lIndexCountFile.open(iIndexFilePath.c_str(), ios::out );
 		lIndexCountFile<<lTable<<kComma<<lIndex<<kIsEqual<<lCount<<endl;
+		cout<<"set count of index "<<lIndex<<" from table "<<lTable<<" to "<<lCount<<" successfull"<<endl;
 		lIndexCountFile.close();
 		return true;
 	}
@@ -324,16 +363,21 @@ bool processSetCountIndexQuery(string iIndexFilePath, string iQuery)
 	{
 		lIndexCountFile<<lTable<<kComma<<lIndex<<kIsEqual<<lCount<<std::endl;
 	}
+	cout<<"set count of index "<<lIndex<<" from table "<<lTable<<" to "<<lCount<<" successfull"<<endl;
 	lIndexCountFile.close();
 	return true;
 }
 
-
-
-int main()
+int main(int argc, char **argv)
 {
 	int lResult = 0;
-	if(!queralyzer())
-	lResult = -1;
+	// start query analyzer
+	if(argc>1)
+	queralyzer(argv[1]);
+	else
+	{
+		if(!queralyzer(NULL))
+		lResult = -1;
+	}
 	return lResult;	    
 }
