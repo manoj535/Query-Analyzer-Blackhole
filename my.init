@@ -11,7 +11,7 @@ default-storage-engine=MyISAM
 #plugin-load=example=ha_example
 #plugin-load=myplugin=myplugin
 plugin-load=FAKEENGINE=ha_fakeengine
-plugin-dir=./plugin/
+plugin-dir=/opt/queralyzer/plugin/
 server_id = 1
 log-output=FILE
 general-log=ON
