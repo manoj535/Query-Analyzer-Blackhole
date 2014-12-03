@@ -22,16 +22,16 @@ else
 LDLIBS += -lpthread
 endif
 
-all: queryAnalyzer
+all: query-analyzer
 
 queryAnalyzer.o: queryAnalyzer.cpp
 	$(CPP) $(CFLAGS) $(CPPFLAGS) -c -o $@ $<
 
-queryAnalyzer: queryAnalyzer.o
+query-analyzer: queryAnalyzer.o
 	cd ./plugin && make -f ./makefile
 	$(CPP) $(LDFLAGS) queryAnalyzer.o $(LDLIBS) -o $@
 
 all: $(targets)
 clean: 
-	rm -f queryAnalyzer *.o *.core
+	rm -f query-analyzer *.o *.core
 	cd ./plugin && make clean
